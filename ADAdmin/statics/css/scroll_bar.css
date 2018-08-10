@@ -1,0 +1,14 @@
+/* iCheck plugin skins */
+
+.scroll_bar {
+    overflow: scroll;
+    scrollbar-face-color: #fcfcfc;
+    scrollbar-highlight-color: #6c6c90;
+    scrollbar-shadow-color: #fcfcfc;
+    scrollbar-3dlight-color: #fcfcfc;
+    scrollbar-arrow-color: #240024;
+    scrollbar-track-color: #fcfcfc;
+    scrollbar-darkshadow-color: #48486c;
+    scrollbar-base-color: #fcfcfc;
+}
+

@@ -1,0 +1,134 @@
+{% extends 'bash/bash.html' %}
+{% block content %}
+{% load deploy_tags %}
+<div id="tab-general">
+    <div class="row mbl">
+        <div class="col-sm-12">
+            <div class="ibox float-e-margins" id="all">
+
+                <div class="panel panel-green">
+                    <div class="panel-heading col-sm-10"><p style="margin: 5px;" >{% get_model_verbose_name admin_class%}</div>
+                    <div class="panel-heading col-sm-2">
+                        <button type="button" class="btn btn-blue" data-toggle="modal" data-target="#myModal">上传文件</button>
+                    </div>
+                    <form method="post" onsubmit="return FormVerification(this)">{% csrf_token %}
+                        <table class="table table-bordered ">
+                            <thead>
+                                <tr>
+                                    {% if not  admin_class.list_display %}
+                                        <th>{{ model_name }}</th>
+                                    {% else %}
+                                        <th class='text-center'>
+                                            <input onclick="checkAll(this)" type="checkbox" />
+                                        </th>
+                                        {% for column in admin_class.list_filter %}
+                                        <th class='text-center'>
+
+                                        {% if order_column == column  %}
+                                            {{ order_column }}
+                                        {% else %}
+                                            {{ column }}
+                                        {% endif %}
+                                        </th>
+                                        {% endfor %}
+                                        <th class='text-center' >操作</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <form method="post">
+                                    {% for row in querysets %}
+                                    <tr class='gradeX '  >
+                                        <td class='text-center'>
+                                            <input type='checkbox'  class='row-obj' name ='_selected_obj'  value='row{{ row.id }}'></td>
+                                        <td>{{ row.file_name }}</td>
+                                        <td>{{ row.file_path }}</td>
+                                        <td>{{ row.file_type }}</td>
+    {#                                    {% build_table_row row admin_class app_name model_name %}#}
+                                        <form method='post'>
+                                            {% csrf_token %}
+                                            {% get_enable_objects row app_name model_name admin_class%}
+                                        </form>
+                                    </tr>
+                                {% endfor %}
+                                </form>
+                            </tbody>
+                        </table>
+                        <hr>
+                    </form>
+                    <div class="pagination">
+                        <ul class="pagination">
+                            <li class=""><a href="?_page=1{{ filter_condtions_string }}">首页 </a></li>
+                            {% for p in paginator.page_range %}
+                                 {% if i < 3 %}
+                                    {% if p == querysets.number %}
+                                        <li class="active"><a href="?_page={{ p }}{{ filter_condtions_string }}&_o={{ last_orderby_key }}">{{ p }} </a></li>
+                                    {% else %}
+                                        <li class=""><a href="?_page={{ p }}{{ filter_condtions_string }}&_o={{ last_orderby_key }}">{{ p }}</a></li>
+
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                            <li class="">
+                                <a  href="?_page={{ paginator.num_pages }}{{ filter_condtions_string }}&_o={{ last_orderby_key }}">尾页</a>
+                            </li>
+                            <li class="">
+                                <a>总计 {{ querysets.paginator.num_pages }}页</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <form method="post" action="/cluster/upload/"> {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">选择Ansible部署文件</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="col-sm-3 control-label">选择文件：</label>
+                            <input type="file" name="filename" id="filename">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-3 control-label">文件类型：</label>
+                            <select id="filetype">
+                                {% for file_type in querysets %}
+                                <option label="{{ file_type.file_type }}" value="{{ file_type.file_type_id }}"></option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="uploads(this)">上传</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function uploads(self) {
+        filename = document.getElementById('filename').files[0];
+        filetype = document.getElementById('filetype').value;
+        if ( filename.name == "undefined" || filename.size <= 0){
+            alert('请选择文件');
+            return;
+        }
+        var Formfile = new FormData();
+        Formfile.append("filename",filename);
+        console.log('Formfile',Formfile);
+    }
+
+
+</script>
+{% endblock %}

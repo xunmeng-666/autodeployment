@@ -1,0 +1,499 @@
+{% extends 'bash/bash.html' %}
+{% block head %}
+    <link type="text/css" rel="stylesheet" href="/static/css/scroll_bar.css">
+{% endblock %}
+{% block content %}
+{% load deploy_tags %}
+<div id="tab-general">
+    <div class="row mbl">
+        <div class="col-sm-12">
+            <div class="ibox float-e-margins" id="all">
+
+                <div class="panel panel-green">
+                    <div class="col-sm-12 panel-heading">
+                        <div class="panel-heading col-sm-10">
+                            <ul  class="nav nav-tabs responsive ">
+                                <li class="active btn btn-default" style="padding: 0px">
+                                    <a href="#alert-tab" data-toggle="tab">{{ model_name }}</a></li>
+                                <li class="btn btn-default" style="padding: 0px">
+                                    <a href="#note-tab" onclick="get_log(this)" data-toggle="tab">部署日志</a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="panel-heading col-sm-2">
+                            <button type="button" class="btn btn-blue" data-toggle="modal" data-target="#myModal">上传文件</button>
+                        </div>
+                    </div>
+
+                    <div id="generalTabContent" class="tab-content responsive">
+                        <div id="alert-tab" class="tab-pane fade in active">
+                            <form method="post" onsubmit="return FormVerification(this)">{% csrf_token %}
+                                <table class="table table-bordered ">
+                                    <thead>
+                                        <tr>
+                                            {% if not  admin_class.list_display %}
+                                                <th>{{ model_name }}</th>
+                                            {% else %}
+                                                <th class='text-center'>
+                                                    <input onclick="checkAll(this)" type="checkbox" />
+                                                </th>
+                                                {% for column in admin_class.list_filter %}
+                                                <th class='text-center'>
+
+                                                {% if order_column == column  %}
+                                                    {{ order_column }}
+                                                {% else %}
+                                                    {{ column }}
+                                                {% endif %}
+                                                </th>
+                                                {% endfor %}
+                                                <th class='text-center' >操作</th>
+                                            {% endif %}
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody" class="tab-content responsive">
+                                        {% for row in querysets %}
+                                        <div class="col-lg-12">
+                                            <div method="post">
+                                                {% if row in querysets %}
+                                                <tr class='gradeX '  >
+
+                                                    <td class='text-center'>
+                                                        <input type='checkbox'  class='row-obj' name ='_selected_obj'  value='{{ row.id }}'></td>
+                                                    <td class='text-center'>{{ row.file_name }}</td>
+                                                    <td class='text-center'>{{ row.file_path }}</td>
+                                                    <td class='text-center'>{{ row.file_type }}</td>
+                                                    {% build_time row %}
+                                                    <form method='post'>
+                                                        {% csrf_token %}
+                                                        <td class="text-center">
+                                                            <input type="button" class="btn btn-xs btn-info" value="编辑">
+                                                            <a type="button" class="btn btn-xs btn-danger asset_del" href="/cluster/deploy/del/?idAll={{ row.id }}" >删除</a>
+                                                        </td>
+                                                    </form>
+                                                </tr>
+                                            {% else %}
+                                                <tr class='gradeX '></tr>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        </div>
+                                    </tbody>
+                                </table>
+                                <hr>
+                                <div class="content">
+                                    <tr>
+                                        <td><input onclick="all_del_file(this) "  type='button' class='btn btn-danger btn-sm' value='删除' /></td>
+                                        <td><input onclick="deploy_file(this) "  type='button' class='btn btn-green btn-sm' value='部署' /></td>
+                                    </tr>
+                                </div>
+                            </form>
+                            <div class="pagination">
+                                <ul class="pagination">
+                                    <li class=""><a href="?_page=1{{ filter_condtions_string }}">首页 </a></li>
+                                    {% for p in paginator.page_range %}
+                                        {% get_abs_value p  querysets.number as i %} <!--i变量是当前页与循环的次数的差的绝对值 -->
+                                        {% if i < 3 %}
+                                            {% if p == querysets.number %}
+                                                <li class="active"><a href="?_page={{ p }}{{ filter_condtions_string }}&_o={{ last_orderby_key }}">{{ p }} </a></li>
+                                            {% else %}
+                                                <li class=""><a href="?_page={{ p }}{{ filter_condtions_string }}&_o={{ last_orderby_key }}">{{ p }}</a></li>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <li class="">
+                                        <a  href="?_page={{ paginator.num_pages }}{{ filter_condtions_string }}&_o={{ last_orderby_key }}">尾页</a>
+                                    </li>
+                                    <li class="">
+                                        <a>总计 {{ querysets.paginator.num_pages }}页</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div id="note-tab" class="tab-pane fade" >
+                            <div class="row logs_display" id="display_log" style="background-color: black;display:block;height: 500px;" >
+                                <ul class="scroll_bar" style="height:85%;"></ul>
+                                <div style='width:200px; margin:0 50%' id='checkAll_log'></div>
+                            </div>
+                        </div>
+                        <div id="file-tab" class="tab-pane fade">
+                            <div class="row logs_display" id="display_logfile" style="background-color: #ffffff;display:block;height: 500px;" >
+                                <ul class="scroll_bar" style="height:85%;"></ul>
+                                <div style='width:200px; margin:0 50%' id='checkAll_log'></div>
+                            </div>
+                        </div>
+                    </div>
+                    <br>
+                    <div id="alert-tab" class="tab-pane fade in active">
+                        <form>
+                            <table class="table table-bordered ">
+                                <thead>
+                                    <tr>
+                                        <th class='text-center'>
+                                            <input onclick="oncheckAll(this)" type="checkbox" />
+                                        </th>
+                                        <th class='text-center'>部署列表</th>
+                                        <th class='text-center'>查看</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="log_list">
+                                    <div class="pagination">
+                                    {% for list in deployfunc %}
+                                        <tr class='gradeX '>
+                                            <td  class="text-center">
+                                                <input type='checkbox'  class='row-log' name ='_selected'  value='{{ list.id }}'>
+                                            </td>
+                                            <td  class="text-center">{{ list.name }}</td>
+                                            <td  class="text-center">
+                                                <a href="#file-tab" onclick="check_logs(this)" data-toggle="tab"><i class="fa fa-hand-o-up"></i></a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                    </div>
+                                    <div class="pagination">
+
+                                    </div>
+                                </tbody>
+                            </table>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <form method="post" > {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">选择Ansible部署文件</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="col-sm-3 control-label">选择文件：</label>
+                            <input type="file" name="filename" id="filename">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-sm-3 control-label">文件类型：</label>
+                            <select id="filetype" class="col-sm-4">
+                                {% for field in form_obj %}
+                                    {% if field.name == 'file_type' %}
+                                        <option value="{{ field }}"></option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                            <button type="button" class="btn btn-primary" onclick="uploads(this)">上传</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="modal fade" id="Template" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">添加模板类型</h4>
+            </div>
+
+            <form class="modal-bodyl" method="post">{% csrf_token %}
+                {% for field in form_obj %}
+                <div class="modal-body">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="col-lg-2 control-label">{{ field.label }}：</label>
+                            <div class="col-lg-7">{{ field }}</div>
+                            <span style="color:gray;font-size: 10px">{{ field.help_text }}</span>
+                            <span style="color: red">{{ field.errors.0 }}  </span>
+                        </div>
+                    </div>
+                </div>
+                    {% endfor %}
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                    <input type="submit" class="btn btn-primary" onclick="save_template(this)" value="保存">
+                </div>
+                <hr>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block script %}
+    <script src="/static/js/jquery-1.12.4.min.js"></script>
+    <script src="/static/js/jquery-1.12.4.js"></script>
+{% endblock %}
+
+<script>
+
+
+    function get_log(self) {
+
+        var urls = window.location.host;
+
+        var ws = new WebSocket("ws://"+urls+"/socket/echo_logs/");
+
+        ws.onopen = function(evt) {
+
+            onopen(ws,'Hello WebSockets!')
+        };
+
+        if(ws.readyState == WebSocket.OPEN){ws.onopen()}
+        ws.onmessage = function(evt) {
+          onmessage(ws,evt);
+        };
+
+        ws.onclose = function(evt) {
+            onclose(ws,evt)
+        };
+
+
+    }
+
+    function onopen(ws,msg) {
+        ws.send(msg)
+    }
+
+    function onmessage(ws,evt) {
+        log_data = evt.data;
+        if( log_data == 'quit'){
+            $("#checkAll_log").html("<a href='#file-tab' onclick='check_log(this)' data-toggle='tab'>" +
+                "查看完整日志" + "\t\n"+"</a>");
+            ws.close();
+        }
+        else {
+            $("#display_log").find('ul').append("<li>"+log_data + "\t\n"+"</li>");
+            $("#display_log").attr("overflow-x","hidden");
+            autoScroll("#display_log")
+        }
+
+    }
+
+    function onclose(ws) {
+        ws.close()
+    }
+
+    function autoScroll(obj){
+        $(obj).find("ul").animate({
+            marginTop : "0px"
+        },1,function(){
+            $(this).css({marginTop : "0px"}).find("li:first").appendTo(this);
+        })
+    }
+
+    function check_logs(self) {
+        console.log('self',self)
+        var name = $(self).closest('tr').find('td').eq(1).text();
+        log_func(name);
+    }
+
+    function log_func(name) {
+        var urls = window.location.host;
+        if(window.s){window.s.close()}
+        var socket = new WebSocket("ws://"+urls+"/socket/echo_logfile/?LogName="+name);
+
+        socket.onopen = function (event) {
+            console.log('连接到socket服务器');
+            socket.send('hello');
+        }
+        socket.onmessage = function (p1) {
+            log_data = p1.data;
+            console.log('返回数据:',log_data);
+            $("#display_logfile").find('ul').append("<li>"+log_data + "\t\n"+"</li>");
+
+        };
+        if(socket.readyState == WebSocket.OPEN)socket.onopen();
+        window.s = socket;
+        if(!window.s){alert("websocket未连接.");}
+        window.onbeforeunload = function () {
+            socket.send('quit');
+            closeWebSocket();
+        }
+    }
+
+
+    $(function(){
+        var scroll=setInterval('autoScroll(".maquee")',100);
+         $(".maquee").hover(function(){
+          console.log("aaa");
+          clearInterval(scroll);
+         },function(){
+          scroll=setInterval('autoScroll(".maquee")',100);
+         });
+    });
+
+    function check_log(self) {
+        console.log('查看被点击');
+        var urls = window.location.host;
+        if(window.s){window.s.close()}
+        var socket = new WebSocket("ws://"+urls+"/socket/echo_logfiles/");
+
+        socket.onopen = function (event) {
+            console.log('连接到socket服务器');
+            socket.send('hello');
+        }
+        socket.onmessage = function (p1) {
+            log_data = p1.data;
+            console.log('返回数据:',log_data);
+            $("#display_logfile").find('ul').append("<li>"+log_data + "\t\n"+"</li>");
+
+        };
+        if(socket.readyState == WebSocket.OPEN)socket.onopen();
+        window.s = socket;
+        if(!window.s){alert("websocket未连接.");}
+        window.onbeforeunload = function () {
+            socket.send('quit');
+            closeWebSocket();
+        }
+    }
+
+
+    function uploads(self) {
+        var file_type = document.getElementById('filetype');
+        var filename = document.getElementById('filename').files[0];
+        console.log('file1',file_type.value)
+        console.log('file2',filename)
+        if (filename != undefined && file_type.value != ''){
+            var fm = new FormData();
+            fm.append("action", "UploadVMKImagePath");
+            fm.append('filename',filename );
+            console.log('fm',fm.get('file_type'))
+            $.ajax({
+                url: "/cluster/upload/?file_type="+file_type.value,
+                type: 'POST',
+                data: fm,
+                processData: false,  // tell jQuery not to process the data
+                contentType: false,  // tell jQuery not to set contentType
+                success:function (result) {
+                    alert('上传完成')
+                    location.reload('/cluster/deploy/')
+                }
+            })
+        }
+        else {
+            alert("请选择文件并选择类型")
+        }
+
+    }
+
+    function all_del(self) {
+        var check = document.getElementsByName("_selected_obj");
+        var len = check.length;
+        var idAll = "";
+        for (var i = 0; i<len;i++){
+            if(check[i].checked){
+                idAll += check[i].value+',';
+            }
+        }
+        if(idAll == ''){
+            var td_id = $(this).closest('tr').find('th').eq(1).text();
+            idAll = td_id + ',';
+        }
+        $.ajax({
+            url:"/cluster/template/all_del/?idAll=" + idAll,
+            type: 'post',
+            success:function (data) {
+                var del_status = JSON.parse(data);
+                if(del_status.status=='true'){
+                    alert('删除成功');
+                    location.reload(true)
+                }else {
+                    alert('删除失败',del_status.error)
+                    location.reload(true)
+                }
+            }
+        })
+    }
+
+    function all_del_file(self) {
+        var check = document.getElementsByName("_selected_obj");
+        var len = check.length;
+        var idAll = "";
+        for (var i = 0; i<len;i++){
+            if(check[i].checked){
+                idAll += check[i].value+',';
+            }
+        }
+        if(idAll == ''){
+            var td_id = $(this).closest('tr').find('th').eq(1).text();
+            idAll = td_id + ',';
+        }
+        $.ajax({
+            url:"/cluster/deploy/all_del/?idAll=" + idAll,
+            type: 'post',
+            success:function (data) {
+                var del_status = JSON.parse(data);
+                if(del_status.status=='true'){
+                    alert('删除成功');
+                    location.reload(true)
+                }else {
+                    alert('删除失败',del_status.error)
+                    location.reload(true)
+                }
+            }
+        })
+    }
+
+    function checkAll(self) {
+        if ( $(self).prop('checked')){
+
+            $("table .row-obj").prop('checked',true)
+        }else {
+             $("table .row-obj").prop('checked',false)
+        }
+
+    }
+
+    function deploy_file(self) {
+        var check = document.getElementsByName("_selected_obj");
+        var len = check.length;
+        var idAll = '';
+        var count = 0;
+        var inventory = '';
+        var playbook = '';
+        var files_type = [];
+        for(var i = 0; i<len;i++){
+            if(check[i].checked){
+                idAll += check[i].value+',';
+                count += 1;
+                file_type = check[i].parentNode.parentNode.children[3].innerHTML;
+                if(file_type == 'Inventory'){
+                    inventory += check[i].value;
+                }
+                else if(file_type == 'Playbook') {
+                    playbook += check[i].value;
+                }
+            }
+        }
+        if (count == 0){
+            alert('没有选择任何文件');
+        }
+        else if (count !=2){alert("只能选择一个Inventory文件和一个Playbook文件")}
+        else {
+            console.log('inventory',inventory);
+            console.log('playbook',playbook);
+            $.ajax({
+                url: '/cluster/deploy/file/?inventory_id='+inventory+"&playbook_id="+playbook,
+                type: 'post',
+                success:function (arg) {
+{#                    alert('执行成功，请点击日志查看执行状态')#}
+                }
+            })
+        }
+
+    }
+
+</script>
+{% endblock %}
